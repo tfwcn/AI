@@ -14,8 +14,9 @@ class MyRobot:
         self.latent_dim = 128  # Latent dimensionality of the encoding space. 隐藏神经元数量
         self.num_samples = 0  # Number of samples to train on. 训练数量
         self.max_encoder_seq_length = 256  # 句子最大长度
+        self.word_all = ''  # 中文字符集
         self.alphabet = ''  # 字符集
-        self.word_file_path = 'word.txt'  # 字符集文件路径
+        self.word_file_path = 'word_all.txt'  # 字符集文件路径
         self.train_file_path = 'ai.txt'  # 训练集文件路径
         self.char_to_int = None  # 字符转序号
         self.int_to_char = None  # 序号转字符
@@ -30,10 +31,8 @@ class MyRobot:
         """加载字库"""
         print('正在加载字库...')
         with open(self.word_file_path, 'r', encoding='UTF-8') as word_file:
-            self.alphabet = word_file.read()  # 2500
-            self.alphabet += 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'  # 英文数字
-            self.alphabet += ',./;\'[]\\-=`<>?:"{+}|_)(*&^%$#@!~` '  # 标点
-            self.alphabet += '，。《》？；‘’：“”【】—（）…￥！·'  # 中文标点
+            self.word_all = word_file.read()  # 2500
+            self.alphabet = self.word_all
             self.alphabet += '\t\n'  # 开头结束标志
             word_file.close()
         print('正在加载字库完成!')
@@ -42,9 +41,11 @@ class MyRobot:
         """新增字符"""
         f2 = open(self.word_file_path, 'w', encoding='utf-8')
         f2.truncate()  # 清空文件
-        self.alphabet += char
-        f2.write(self.alphabet)
+        self.word_all += char
+        f2.write(self.word_all)
         f2.close()
+        self.alphabet = self.word_all
+        self.alphabet += '\t\n'  # 开头结束标志
 
     def int2bit(self, num):
         bit = []

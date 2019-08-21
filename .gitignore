@@ -3,3 +3,4 @@
 training_checkpoints
 tmp
 __pycache__
+*.h5

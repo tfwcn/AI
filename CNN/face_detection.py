@@ -3,6 +3,7 @@ import os
 import sys
 import cv2 as cv
 import numpy as np
+from absl import flags, app
 
 
 # tf.compat.v1.enable_eager_execution()
@@ -17,6 +18,10 @@ ROOT_DIR = os.path.abspath("../")
 sys.path.append(ROOT_DIR)
 from DataLoader.wider_face_loader import WiderFaceLoader
 
+# 输入参数
+FLAGS = flags.FLAGS
+flags.DEFINE_string('label_path', None, '标签路径')
+flags.DEFINE_string('image_path', None, '图片路径')
 
 class Encoder(tf.keras.Model):
     """编码器"""
@@ -38,8 +43,9 @@ class Encoder(tf.keras.Model):
         # 使用ResNet50做特征提取
         self.feature_inceptionV3 = tf.keras.applications.ResNet50(include_top=False, weights='imagenet')
         # 减少维度
-        self.feature_conv = tf.keras.layers.Conv2D(32, (3, 3), padding='same', name='feature_conv',
-                                                    kernel_initializer=tf.keras.initializers.he_normal(), activation=tf.keras.activations.tanh)
+        self.feature_conv = tf.keras.layers.Conv2D(16, (3, 3), padding='same', name='feature_conv',
+                                                    kernel_initializer=tf.keras.initializers.he_normal(),
+                                                    activation=tf.keras.activations.tanh)
         # 二维数据转一维
         self.feature_flatten1 = tf.keras.layers.Flatten(
             name='feature_flatten1')
@@ -54,7 +60,8 @@ class Encoder(tf.keras.Model):
         # x = self.feature_conv3(x)
         # x = self.feature_conv4(x)
         # x = self.feature_conv5(x)
-        x = self.feature_inceptionV3(input_data)
+        x = tf.image.resize(input_data, size=(512, 512))
+        x = self.feature_inceptionV3(x)
         x = self.feature_conv(x)
         x = tf.image.resize(x, size=(40, 40))
         x = self.feature_flatten1(x)
@@ -273,13 +280,13 @@ def get_bacth_data(label_data, img_width, img_height):
     return label_classes, label_boxs
 
 
-def main():
+def main(argv):
     # 加载数据
     wider_face_loader = WiderFaceLoader()
     # train_data,图片路径list
     # train_label(素材数量,目标框数量,4)
     train_data, train_label = wider_face_loader.load(
-        'E:/MyFiles/人脸检测素材/wider_face_split/wider_face_train_bbx_gt.txt', 'E:/MyFiles/人脸检测素材/WIDER_train/images')
+        FLAGS.label_path, FLAGS.image_path)
     # print('train_data', train_data[2])
     # print('train_label', train_label[2])
     # 读取图片
@@ -298,7 +305,7 @@ def main():
 
     # 下标，用于随机顺序
     train_index = range(train_data.shape[0])
-    for _ in range(1):
+    for _ in range(10):
         # 随机下标
         train_index = tf.random.shuffle(train_index)
         for i in train_index:
@@ -319,7 +326,7 @@ def main():
 
     # 识别
     print('开始识别')
-    predict_path = 'E:/MyFiles/人脸检测素材/WIDER_train/images/1--Handshaking/1_Handshaking_Handshaking_1_164.jpg'
+    predict_path = os.path.join(FLAGS.image_path, '1--Handshaking/1_Handshaking_Handshaking_1_164.jpg')
     predict_data = tf.constant(predict_path, dtype=tf.string)
     img = tf.io.read_file(predict_data)
     img = tf.io.decode_image(img, channels=3, dtype=tf.float32)
@@ -351,4 +358,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    flags.mark_flag_as_required('label_path')
+    flags.mark_flag_as_required('image_path')
+    app.run(main)

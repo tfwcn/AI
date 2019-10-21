@@ -29,10 +29,11 @@ class WiderFaceLoader():
                     img_box = lines[line_index].split(' ')
                     line_index+=1
                     boxs.append([float(img_box[0]),float(img_box[1]),float(img_box[2]),float(img_box[3])])
-                if len(boxs)>0:
+                
+                if len(boxs)>0 and len(boxs)<10:
                     train_data.append(os.path.join(img_dir, img_name))
                     train_label.append(boxs)
-                else:
+                if len(boxs)==0:
                     # 无人脸框的跳一行
                     line_index+=1
         return train_data, train_label

@@ -15,41 +15,42 @@ from DataLoader.image_loader import ImageLoader
 def MarginConv2D(inputs, filters, kernel_size, strides, apply_dropout=False):
     """卷积合并"""
     x = tf.keras.layers.Conv2D(filters, kernel_size, strides=strides, padding='same')(inputs)
-    skip = x
-    x = tf.keras.layers.Conv2D(int(filters / 2), (3, 3), padding='same')(x)
-    x = tf.keras.layers.Conv2D(filters, (1, 1), padding='same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
+    # skip = x
+    # x = tf.keras.layers.Conv2D(int(filters / 2), (3, 3), padding='same')(x)
+    # x = tf.keras.layers.Conv2D(filters, (1, 1), padding='same')(x)
+    x = tf.keras.layers.Conv2D(filters, (3, 3), padding='same')(x)
+    x = tf.keras.layers.BatchNormalization(trainable=False)(x)
     x = tf.keras.layers.LeakyReLU()(x)
     if apply_dropout:
-        x = tf.keras.layers.Dropout(0.5)(x)
-    x = tf.keras.layers.Concatenate()([x, skip])
+        x = tf.keras.layers.Dropout(0.3)(x)
+    # x = tf.keras.layers.Concatenate()([x, skip])
     return x
 
 def MarginConv2DTranspose(inputs, filters, kernel_size, strides):
     """卷积合并"""
     x = tf.keras.layers.Conv2DTranspose(filters, kernel_size, strides=strides, padding='same', use_bias=False)(inputs)
-    skip = x
-    x = tf.keras.layers.Conv2D(int(filters / 2), (3, 3), padding='same')(x)
-    x = tf.keras.layers.Conv2D(filters, (1, 1), padding='same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
+    # skip = x
+    # x = tf.keras.layers.Conv2D(int(filters / 2), (3, 3), padding='same')(x)
+    # x = tf.keras.layers.Conv2D(filters, (1, 1), padding='same')(x)
+    x = tf.keras.layers.BatchNormalization(trainable=False)(x)
     x = tf.keras.layers.LeakyReLU()(x)
-    x = tf.keras.layers.Concatenate()([x, skip])
+    # x = tf.keras.layers.Concatenate()([x, skip])
     return x
 
 def make_generator_model():
     """生成器，随机生成假图片"""
     inputs = tf.keras.layers.Input(shape=(100,))
-    x = tf.keras.layers.Dense(7*7*512, use_bias=False, input_shape=(100,))(inputs)
+    x = tf.keras.layers.Dense(7*7*256, use_bias=False, input_shape=(100,))(inputs)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.LeakyReLU()(x)
 
-    x = tf.keras.layers.Reshape((7, 7, 512))(x)
+    x = tf.keras.layers.Reshape((7, 7, 256))(x)
     # assert x.shape == (None, 7, 7, 512) # Note: None is the batch size
 
-    x = MarginConv2DTranspose(x, 512, (5, 5), strides=(1, 1))
+    x = MarginConv2DTranspose(x, 256, (5, 5), strides=(1, 1))
     # assert x.shape == (None, 7, 7, 512)
 
-    x = MarginConv2DTranspose(x, 512, (5, 5), strides=(2, 2))
+    x = MarginConv2DTranspose(x, 256, (5, 5), strides=(2, 2))
     # assert x.shape == (None, 14, 14, 512)
 
     x = MarginConv2DTranspose(x, 256, (5, 5), strides=(2, 2))
@@ -86,10 +87,10 @@ def make_discriminator_model():
     x = MarginConv2D(x, 256, (5, 5), strides=(2, 2), apply_dropout=True)
 
     # (28,28,256)=>(14,14,512)
-    x = MarginConv2D(x, 512, (5, 5), strides=(2, 2), apply_dropout=True)
+    x = MarginConv2D(x, 256, (5, 5), strides=(2, 2), apply_dropout=True)
 
     # (14,14,512)=>(7,7,512)
-    x = MarginConv2D(x, 512, (5, 5), strides=(2, 2), apply_dropout=True)
+    x = MarginConv2D(x, 256, (5, 5), strides=(2, 2), apply_dropout=True)
 
     x = tf.keras.layers.Flatten()(x)
     x = tf.keras.layers.Dense(1)(x)
@@ -107,7 +108,7 @@ discriminator = make_discriminator_model()
 cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
 # 生成器梯度下降
-generator_optimizer = tf.keras.optimizers.Adam(1e-4)
+generator_optimizer = tf.keras.optimizers.Adam(1e-5)
 # 鉴别器梯度下降
 discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
 
@@ -162,19 +163,28 @@ def train_step(images):
     generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
     discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
 
+    return gen_loss, disc_loss
+
 
 #%%
 def train(dataset, epochs):
     for epoch in range(epochs):
         start = time.time()
 
+        gen_loss_sum = 0
+        disc_loss_sum = 0
         for image_batch in dataset:
             input_data = tf.io.read_file(image_batch)
             input_data = tf.io.decode_image(input_data, channels=3, dtype=tf.float32)
             input_data = tf.image.resize(input_data, size=(448, 448))
             input_data = tf.divide(input_data, 255.0)
             input_data = tf.expand_dims(input_data, 0)
-            train_step(input_data)
+            gen_loss, disc_loss = train_step(input_data)
+            gen_loss_sum += gen_loss
+            disc_loss_sum += disc_loss
+
+        gen_loss_sum = gen_loss_sum / len(dataset)
+        disc_loss_sum = disc_loss_sum / len(dataset)
 
         # Produce images for the GIF as we go
         generate_and_save_images(generator,
@@ -185,7 +195,7 @@ def train(dataset, epochs):
         if (epoch + 1) % 15 == 0:
             checkpoint.save(file_prefix = checkpoint_prefix)
 
-        print ('Time for epoch {} is {} sec'.format(epoch + 1, time.time()-start))
+        print ('Time for epoch {} is {} sec. gen_loss {} disc_loss {}'.format(epoch + 1, time.time()-start, gen_loss_sum, disc_loss_sum))
 
     # Generate after the final epoch
     generate_and_save_images(generator,

@@ -272,7 +272,7 @@ def main():
     # gupiao_loader.convert_file('./data/gupiao_data')
     df_sh = gupiao_loader.load_one('./data/gupiao_data/999999.SH.csv')
     df_sz = gupiao_loader.load_one('./data/gupiao_data/399001.SZ.csv')
-    df_target = gupiao_loader.load_one('./data/gupiao_data/601066.SH.csv')
+    df_target = gupiao_loader.load_one('./data/gupiao_data/603106.SH.csv')
     # print('df_target', df_target[df_target['日期']>='2017/01/01'])
     batch_size = 20
     history_size = 30

@@ -310,7 +310,6 @@ def main():
     df_sh = gupiao_loader.load_one('./data/gupiao_data/999999.SH.csv')
     df_sz = gupiao_loader.load_one('./data/gupiao_data/399001.SZ.csv')
     df_target = gupiao_loader.load_one('./data/gupiao_data/603106.SH.csv')
-    # df_target = gupiao_loader.load_one('./data/gupiao_data/601066.SH.csv')
     # print(df_target)
     x, y = gupiao_loader.get_data_to_train(df_sh, df_sz, df_target, batch_size, history_size, target_size)
     print(x.shape,y.shape)

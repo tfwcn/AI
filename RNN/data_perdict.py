@@ -142,7 +142,7 @@ class DataPerdictModel():
         self.encoder_model = Encoder()
         self.decoder_model = Decoder(self.output_num-6)
         # 优化器
-        self.optimizer = tf.keras.optimizers.RMSprop(clipvalue=1.0, lr=0.003)
+        self.optimizer = tf.keras.optimizers.RMSprop(clipvalue=1.0, lr=0.001)
         # 损失函数
         self.loss_object = tf.keras.losses.MeanAbsoluteError()
         # 保存模型
@@ -355,11 +355,11 @@ class DataPerdictLoader():
             start_index = random.randint(history_size, len(df)-target_size-1)
         tmp_df = df.iloc[start_index-history_size:start_index+target_size].copy()
         # 数据归一化
-        tmp_df.loc[:, 'wendu'] = tmp_df.apply(lambda x: x['wendu'] * 0.01, axis=1)
-        tmp_df.loc[:, 'col1'] = tmp_df.apply(lambda x: x['col1'] * 0.01, axis=1)
-        tmp_df.loc[:, 'col2'] = tmp_df.apply(lambda x: x['col2'] * 0.01, axis=1)
-        tmp_df.loc[:, 'col3'] = tmp_df.apply(lambda x: x['col3'] * 0.01, axis=1)
-        tmp_df.loc[:, 'col4'] = tmp_df.apply(lambda x: x['col4'] * 0.01, axis=1)
+        tmp_df.loc[:, 'VALUE'] = tmp_df.apply(lambda x: x['VALUE'] / 500, axis=1)
+        tmp_df.loc[:, 'VALUE_df2'] = tmp_df.apply(lambda x: x['VALUE_df2'] / 300, axis=1)
+        tmp_df.loc[:, 'VALUE_df3'] = tmp_df.apply(lambda x: x['VALUE_df3'] / 100, axis=1)
+        tmp_df.loc[:, 'VALUE_df4'] = tmp_df.apply(lambda x: x['VALUE_df4'] / 5000, axis=1)
+        tmp_df.loc[:, 'VALUE_df5'] = tmp_df.apply(lambda x: x['VALUE_df5'] / 20000, axis=1)
         # 增加列
         col_name = tmp_df.columns.tolist()
         col_name.insert(1, 'year')  # 默认值为NaN
@@ -370,12 +370,12 @@ class DataPerdictLoader():
         col_name.insert(6, 'second')  # 默认值为NaN
         tmp_df = tmp_df.reindex(columns=col_name)
         # 日期数据归一化
-        tmp_df.loc[:, 'year'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['date'],'%Y/%m/%d %H:%M:%S').year-2000) / 20, axis=1)
-        tmp_df.loc[:, 'month'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['date'],'%Y/%m/%d %H:%M:%S').month) / 12, axis=1)
-        tmp_df.loc[:, 'day'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['date'],'%Y/%m/%d %H:%M:%S').day) / 31, axis=1)
-        tmp_df.loc[:, 'hour'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['date'],'%Y/%m/%d %H:%M:%S').hour) / 24, axis=1)
-        tmp_df.loc[:, 'minute'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['date'],'%Y/%m/%d %H:%M:%S').minute) / 60, axis=1)
-        tmp_df.loc[:, 'second'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['date'],'%Y/%m/%d %H:%M:%S').second) / 60, axis=1)
+        tmp_df.loc[:, 'year'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['CREATE_TIME'],'%Y/%m/%d %H:%M:%S').year-2000) / 20, axis=1)
+        tmp_df.loc[:, 'month'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['CREATE_TIME'],'%Y/%m/%d %H:%M:%S').month) / 12, axis=1)
+        tmp_df.loc[:, 'day'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['CREATE_TIME'],'%Y/%m/%d %H:%M:%S').day) / 31, axis=1)
+        tmp_df.loc[:, 'hour'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['CREATE_TIME'],'%Y/%m/%d %H:%M:%S').hour) / 24, axis=1)
+        tmp_df.loc[:, 'minute'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['CREATE_TIME'],'%Y/%m/%d %H:%M:%S').minute) / 60, axis=1)
+        tmp_df.loc[:, 'second'] = tmp_df.apply(lambda x: (datetime.datetime.strptime(x['CREATE_TIME'],'%Y/%m/%d %H:%M:%S').second) / 60, axis=1)
         # print('tmp_df_merge', len(tmp_df_merge))
         # print(tmp_df_merge.loc[:, ['data','年','月','日']])
         # 重置索引
@@ -423,7 +423,7 @@ class DataPerdictLoader():
         y_history = np.expand_dims(y_history, axis=0)
         y_target = tmp_df.iloc[history_size:,:].loc[:, self.output_colname].values
         y_target = np.expand_dims(y_target, axis=0)
-        time_step = self.create_time(tmp_df.iloc[history_size-1,:].loc['date'], target_size, hours=1)
+        time_step = self.create_time(tmp_df.iloc[history_size-1,:].loc['CREATE_TIME'], target_size, minutes=5)
         time_step = np.expand_dims(time_step, axis=0)
         return x, y_history, y_target, time_step
     
@@ -465,21 +465,21 @@ class DataPerdictLoader():
     def save_csv(self, file_path, time_step, perdict_data):
         '''保存csv'''
         new_df = pandas.DataFrame(np.append(time_step, perdict_data, axis=1),
-                                columns=['year','month','day','hour','minute','second','wendu','col1','col2','col3','col4'])
+                                columns=['year','month','day','hour','minute','second','VALUE','VALUE_df2','VALUE_df3','VALUE_df4','VALUE_df5'])
         
         # 增加列
         col_name = new_df.columns.tolist()
-        col_name.insert(0, 'date')  # 默认值为NaN
+        col_name.insert(0, 'CREATE_TIME')  # 默认值为NaN
         new_df = new_df.reindex(columns=col_name)
-        new_df.loc[:, 'date'] = new_df.apply(lambda x: datetime.datetime(
+        new_df.loc[:, 'CREATE_TIME'] = new_df.apply(lambda x: datetime.datetime(
             int(x['year'] * 20 + 2000), int(x['month'] * 12), int(x['day'] * 31), 
             int(x['hour'] * 24), int(x['minute'] * 60), int(x['second'] * 60)).strftime('%Y/%m/%d %H:%M:%S'), axis=1)
-        new_df.loc[:, 'wendu'] = new_df.apply(lambda x: x['wendu'] * 100, axis=1)
-        new_df.loc[:, 'col1'] = new_df.apply(lambda x: x['col1'] * 100, axis=1)
-        new_df.loc[:, 'col2'] = new_df.apply(lambda x: x['col2'] * 100, axis=1)
-        new_df.loc[:, 'col3'] = new_df.apply(lambda x: x['col3'] * 100, axis=1)
-        new_df.loc[:, 'col4'] = new_df.apply(lambda x: x['col4'] * 100, axis=1)
-        new_df.loc[:, ['date','wendu','col1','col2','col3','col4']].to_csv(file_path, index=0) #不保存行索引
+        new_df.loc[:, 'VALUE'] = new_df.apply(lambda x: x['VALUE'] * 500, axis=1)
+        new_df.loc[:, 'VALUE_df2'] = new_df.apply(lambda x: x['VALUE_df2'] * 300, axis=1)
+        new_df.loc[:, 'VALUE_df3'] = new_df.apply(lambda x: x['VALUE_df3'] * 100, axis=1)
+        new_df.loc[:, 'VALUE_df4'] = new_df.apply(lambda x: x['VALUE_df4'] * 5000, axis=1)
+        new_df.loc[:, 'VALUE_df5'] = new_df.apply(lambda x: x['VALUE_df5'] * 20000, axis=1)
+        new_df.loc[:, ['CREATE_TIME','VALUE','VALUE_df2','VALUE_df3','VALUE_df4','VALUE_df5']].to_csv(file_path, index=0) #不保存行索引
 
     def show_image(self, history_data, target_data, perdict_data=None):
         '''
@@ -511,28 +511,31 @@ def main():
     output_num = model_output_num
     batch_size = 5
     history_size = 100
-    target_size = 50
+    target_size = 25
     predict_target_size = 25
     # 输入输出字段
     # input_colname = ['year','month','day','hour','minute','second','col1','col2']
     # input_colname = ['year','month','day','hour','minute','second','col4']
     # output_colname = ['year','month','day','hour','minute','second','col4']
-    input_colname = ['year','month','day','hour','minute','second','wendu','col1','col2','col3','col4']
-    output_colname = ['year','month','day','hour','minute','second','wendu','col1','col2','col3','col4']
+    input_colname = ['year','month','day','hour','minute','second','VALUE','VALUE_df2','VALUE_df3','VALUE_df4','VALUE_df5']
+    output_colname = ['year','month','day','hour','minute','second','VALUE','VALUE_df2','VALUE_df3','VALUE_df4','VALUE_df5']
     # 创建模型
     print('创建模型')
     data_perdict_model = DataPerdictModel(input_num, output_num)
     # 加载数据
     print('加载数据')
     data_perdict_loader = DataPerdictLoader(input_colname, output_colname)
-    df = data_perdict_loader.load_file('./test_data.csv')
+    df = data_perdict_loader.load_file('./data/bdzdata_merge.csv')
     print(df)
     # 训练数据集
-    # df_train = df.iloc[:-1000,:]
+    # df_train = df.iloc[:-100,:].copy()
     df_train = df.copy()
     # 测试数据集
-    df_test = df.iloc[-1000:,:]
+    df_test = df.iloc[-100:,:].copy()
     print('训练前预测')
+    x, y_history = data_perdict_loader.get_data_to_train(df_train, batch_size, history_size, target_size)
+    print('x', x[:,-5:])
+    print('y_history', y_history[:,-5:])
     x, y_history, y_target, time_step = data_perdict_loader.get_data_to_predict(df_test, history_size, predict_target_size, end=True)
     print('x', x.shape, 'y_history', y_history.shape, 'y_target', y_target.shape, 'time_step', time_step.shape)
     # print('y_target', y_target)
@@ -540,7 +543,7 @@ def main():
     print('y2', y2.shape)
     print('y2', y2)
     # 保存csv
-    data_perdict_loader.save_csv('data_new.csv', time_step[0,:,:], y2[0,:,:])
+    data_perdict_loader.save_csv('./data/bdzdata_new.csv', time_step[0,:,:], y2[0,:,:])
     # 显示预测值
     data_perdict_loader.show_image(y_history[0,:,6:], y_target[0,:,6:], y2[0,:,:])
     # 开始训练
@@ -548,14 +551,14 @@ def main():
     data_perdict_model.fit_generator(
         data_perdict_loader.data_generator(df_train, batch_size, history_size, target_size),
         steps_per_epoch=int(len(df_train)/history_size),
-        epochs=10, auto_save=True, same_shape=True)
+        epochs=50, auto_save=True, same_shape=True)
     # 预测
     print('预测')
     y2 = data_perdict_model.predict_jit(x, time_step, predict_target_size, same_shape=True)
     # 显示预测值
     data_perdict_loader.show_image(y_history[0,:,6:], y_target[0,:,6:], y2[0,:,:])
     # 保存csv
-    data_perdict_loader.save_csv('data_new.csv', time_step[0,:,:], y2[0,:,:])
+    data_perdict_loader.save_csv('bdzdata_new.csv', time_step[0,:,:], y2[0,:,:])
 
 
 

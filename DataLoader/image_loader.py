@@ -1,4 +1,5 @@
 import os
+import matplotlib.pyplot as plt
 
 class ImageLoader():
     """加载图片文件
@@ -33,6 +34,22 @@ class ImageLoader():
                         file_path=os.path.join(dirpath, f)
                         image_files.append(file_path)
         return image_files
+
+    def show_image_gray(self, image):
+        '''显示灰度图'''
+        plt.figure("Image") # 图像窗口名称
+        plt.imshow(image, cmap='gray')
+        plt.axis('off') # 关掉坐标轴为 off
+        # plt.title('image') # 图像题目
+        plt.show()
+
+    def show_image(self, image):
+        '''显示彩图'''
+        plt.figure("Image") # 图像窗口名称
+        plt.imshow(image, cmap='gray')
+        plt.axis('off') # 关掉坐标轴为 off
+        # plt.title('image') # 图像题目
+        plt.show()
 
 
 def main():

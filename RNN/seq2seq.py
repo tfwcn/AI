@@ -5,7 +5,7 @@ import math
 import os
 
 batch_size = 50  # Batch size for training. 训练批次大小
-epochs = 100  # Number of epochs to train for. 训练多少回
+epochs = 500  # Number of epochs to train for. 训练多少回
 latent_dim = 128  # Latent dimensionality of the encoding space. 隐藏神经元数量
 num_samples = 10000  # Number of samples to train on. 训练数量
 max_encoder_seq_length = 256  # 句子最大长度

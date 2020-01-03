@@ -6,7 +6,7 @@ import cv2 as cv
 import numpy as np
 
 # 根目录
-ROOT_DIR = os.path.abspath("../")
+ROOT_DIR = os.path.abspath("./")
 
 # 导入WiderFaceLoader
 sys.path.append(ROOT_DIR)
@@ -124,7 +124,7 @@ def discriminator_loss(real_output, fake_output):
     return total_loss
 
 # 权重保存
-checkpoint_dir = './training_checkpoints'
+checkpoint_dir = './data/anomaly_gan_model'
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                                  discriminator_optimizer=discriminator_optimizer,

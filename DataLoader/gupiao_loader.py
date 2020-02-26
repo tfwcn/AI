@@ -26,9 +26,8 @@ class GuPiaoLoader():
         ts.set_token(api_token)
         self.pro = ts.pro_api()
 
-    def download_all(self, data_dir):
-        '''下载股票数据'''
-
+    def download_code_list(self, data_dir):
+        '''下载股票列表'''
         # 创建目录
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
@@ -38,13 +37,20 @@ class GuPiaoLoader():
         code_list = data['ts_code'].values
         print('code_list', len(code_list), code_list)
         data.to_csv(os.path.join(data_dir, 'data.csv'))
-        # print(data[data.ts_code=='603106.SH'])
+        return code_list
+
+    def download_all(self, data_dir):
+        '''下载股票数据'''
+        # 创建目录
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+        # 获取所有股票代码
+        code_list = download_code_list(data_dir)
         for now_code in code_list:
             self.download_one(data_dir, now_code)
 
     def download_one(self, data_dir, now_code):
         '''下载股票数据'''
-
         # 创建目录
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
@@ -223,20 +229,30 @@ class GuPiaoLoader():
         result = np.array(result)
         return result
 
-    def show_image(self, history_data, target_data=None):
+    def show_image(self, history_data, target_data=None, true_data=None):
         '''
         显示K线图
         history_data:(None,15)
         target_data:(None,15)
         '''
         all_data = history_data
+        all_data2 = history_data
         if target_data is not None:
             all_data = np.append(history_data, target_data, axis=0)
+        if true_data is not None:
+            all_data2 = np.append(history_data, true_data, axis=0)
         show_history_data = pandas.DataFrame({'data':[i for i in range(all_data.shape[0])],
                                             'open':all_data[:,-12],
                                             'high':all_data[:,-11],
                                             'low':all_data[:,-10],
                                             'close':all_data[:,-9]})
+        
+        if true_data is not None:
+            show_history_data2 = pandas.DataFrame({'data':[i for i in range(all_data2.shape[0])],
+                                                'open':all_data2[:,-12],
+                                                'high':all_data2[:,-11],
+                                                'low':all_data2[:,-10],
+                                                'close':all_data2[:,-9]})
         # print('show_history_data', show_history_data)
         now_close = 50
         for i in range(len(show_history_data)):
@@ -245,6 +261,15 @@ class GuPiaoLoader():
             show_history_data.loc[i,'low'] = now_close*(1+show_history_data.loc[i,'low']*0.1)
             now_close = now_close*(1+show_history_data.loc[i,'close']*0.1)
             show_history_data.loc[i,'close'] = now_close
+
+        if true_data is not None:
+            now_close = 50
+            for i in range(len(show_history_data2)):
+                show_history_data2.loc[i,'open'] = now_close*(1+show_history_data2.loc[i,'open']*0.1)
+                show_history_data2.loc[i,'high'] = now_close*(1+show_history_data2.loc[i,'high']*0.1)
+                show_history_data2.loc[i,'low'] = now_close*(1+show_history_data2.loc[i,'low']*0.1)
+                now_close = now_close*(1+show_history_data2.loc[i,'close']*0.1)
+                show_history_data2.loc[i,'close'] = now_close
 
         # print(show_history_data)
         # 创建一个子图 
@@ -258,37 +283,42 @@ class GuPiaoLoader():
         plt.xlabel("时间")
         plt.ylabel("股价变化(%)")
         all_values = show_history_data.values
+        all_values2 = show_history_data2.values
         if target_data is not None:
             mpf.candlestick_ohlc(ax,all_values[:len(history_data)],width=0.5,colorup='r',colordown='g')
             mpf.candlestick_ohlc(ax,all_values[len(history_data):],width=0.5,colorup='y',colordown='b')
         else:
             mpf.candlestick_ohlc(ax,all_values,width=0.5,colorup='r',colordown='g')
+        
+        if true_data is not None:
+            mpf.candlestick_ohlc(ax,all_values2[len(history_data):],width=0.5,colorup='r',colordown='g')
         plt.show()
 
 def main():
     gupiao_loader = GuPiaoLoader()
+    gupiao_loader.download_code_list('./data/gupiao_data')
     # gupiao_loader.download_one('./data/gupiao_data', '000001.SH')
     # gupiao_loader.download_all('./data/gupiao_data')
     # gupiao_loader.convert_file('./data/gupiao_data')
-    df_sh = gupiao_loader.load_one('./data/gupiao_data/999999.SH.csv')
-    df_sz = gupiao_loader.load_one('./data/gupiao_data/399001.SZ.csv')
-    df_target = gupiao_loader.load_one('./data/gupiao_data/603106.SH.csv')
-    # print('df_target', df_target[df_target['日期']>='2017/01/01'])
-    batch_size = 20
-    history_size = 30
-    target_size = 5
-    x, y = gupiao_loader.get_data_to_train(df_sh, df_sz, df_target, batch_size, history_size, target_size)
-    print(x.shape,y.shape)
-    x, y = gupiao_loader.get_data_to_train(df_sh, df_sz, df_target, batch_size, history_size, target_size)
-    print(x.shape,y.shape)
-    x, y = gupiao_loader.get_data_to_train(df_sh, df_sz, df_target, batch_size, history_size, target_size)
-    print(x.shape,y.shape)
-    x, time_step = gupiao_loader.get_data_to_predict(df_sh, df_sz, df_target, history_size, target_size)
-    print(x.shape)
-    # 预测输入数据显示
-    gupiao_loader.show_image(x[0,:,:], y[0,:,:])
-    # 预测结果数据显示
-    gupiao_loader.show_image(y[0,:,:])
+    # df_sh = gupiao_loader.load_one('./data/gupiao_data/999999.SH.csv')
+    # df_sz = gupiao_loader.load_one('./data/gupiao_data/399001.SZ.csv')
+    # df_target = gupiao_loader.load_one('./data/gupiao_data/603106.SH.csv')
+    # # print('df_target', df_target[df_target['日期']>='2017/01/01'])
+    # batch_size = 20
+    # history_size = 30
+    # target_size = 5
+    # x, y = gupiao_loader.get_data_to_train(df_sh, df_sz, df_target, batch_size, history_size, target_size)
+    # print(x.shape,y.shape)
+    # x, y = gupiao_loader.get_data_to_train(df_sh, df_sz, df_target, batch_size, history_size, target_size)
+    # print(x.shape,y.shape)
+    # x, y = gupiao_loader.get_data_to_train(df_sh, df_sz, df_target, batch_size, history_size, target_size)
+    # print(x.shape,y.shape)
+    # x, time_step = gupiao_loader.get_data_to_predict(df_sh, df_sz, df_target, history_size, target_size)
+    # print(x.shape)
+    # # 预测输入数据显示
+    # gupiao_loader.show_image(x[0,:,:], y[0,:,:])
+    # # 预测结果数据显示
+    # gupiao_loader.show_image(y[0,:,:])
 
 
 if __name__ == '__main__':

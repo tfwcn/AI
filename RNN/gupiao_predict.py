@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 import tensorflow as tf
 import os
 import sys
@@ -17,12 +18,12 @@ from DataLoader.gupiao_loader import GuPiaoLoader
 class Encoder(tf.keras.Model):
     '''编码器'''
 
-    def __init__(self):
+    def __init__(self, gru1_units, gru2_units):
         super(Encoder, self).__init__()
 
         # GRU
-        self.gru1 = tf.keras.layers.GRU(128, return_sequences=True, return_state=True, activation=tf.keras.activations.relu, name='feature_gru1')
-        self.gru2 = tf.keras.layers.GRU(128, return_state=True, activation=tf.keras.activations.relu, name='feature_gru2')
+        self.gru1 = tf.keras.layers.GRU(gru1_units, return_sequences=True, return_state=True, activation=tf.keras.activations.relu, name='feature_gru1')
+        self.gru2 = tf.keras.layers.GRU(gru2_units, return_state=True, activation=tf.keras.activations.relu, name='feature_gru2')
 
     def call(self, input_data):
         '''
@@ -75,16 +76,16 @@ class BahdanauAttention(tf.keras.Model):
 class Decoder(tf.keras.Model):
     '''解码器'''
 
-    def __init__(self, class_num):
+    def __init__(self, class_num, gru1_units, gru2_units):
         super(Decoder, self).__init__()
 
         # used for attention
         # 注意力模块
-        self.attention1 = BahdanauAttention(128)
-        self.attention2 = BahdanauAttention(128)
+        self.attention1 = BahdanauAttention(gru1_units)
+        self.attention2 = BahdanauAttention(gru2_units)
         # GRU
-        self.gru1 = tf.keras.layers.GRU(128, return_sequences=True, return_state=True, activation=tf.keras.activations.relu, name='feature_gru1')
-        self.gru2 = tf.keras.layers.GRU(128, return_state=True, activation=tf.keras.activations.relu, name='feature_gru2')
+        self.gru1 = tf.keras.layers.GRU(gru1_units, return_sequences=True, return_state=True, activation=tf.keras.activations.relu, name='feature_gru1')
+        self.gru2 = tf.keras.layers.GRU(gru2_units, return_state=True, activation=tf.keras.activations.relu, name='feature_gru2')
         # 输出
         self.dense1 = tf.keras.layers.Dense(class_num, name='feature_dense1')
 
@@ -113,7 +114,7 @@ class Decoder(tf.keras.Model):
 class GuPiaoModel():
     '''股票预测模型'''
 
-    def __init__(self, output_num, model_path='./data/gupiao_model'):
+    def __init__(self, output_num, model_path='./data/gupiao_model', is_load_model=True):
         # 预测数据维度
         self.output_num = output_num
         # 加载模型路径
@@ -123,14 +124,21 @@ class GuPiaoModel():
         # 建立模型
         self.build_model()
         # 加载模型
-        self.load_model()
+        if is_load_model:
+            self.load_model()
     
     def build_model(self):
         '''建立模型'''
-        self.encoder_model = Encoder()
-        self.decoder_model = Decoder(self.output_num)
+        '''@nni.variable(nni.choice(16 ,32, 64, 128, 256), name=gru1_units)'''
+        gru1_units = 64
+        '''@nni.variable(nni.choice(16 ,32, 64, 128, 256), name=gru2_units)'''
+        gru2_units = 128
+        self.encoder_model = Encoder(gru1_units, gru2_units)
+        self.decoder_model = Decoder(self.output_num, gru1_units, gru2_units)
         # 优化器
-        self.optimizer = tf.keras.optimizers.RMSprop(clipvalue=1.0, lr=0.001)
+        '''@nni.variable(nni.uniform(0.05, 0.0001), name=learning_rate)'''
+        learning_rate = 0.001
+        self.optimizer = tf.keras.optimizers.RMSprop(clipvalue=1.0, lr=learning_rate)
         # 损失函数
         self.loss_object = tf.keras.losses.MeanAbsoluteError()
         # 保存模型
@@ -201,6 +209,7 @@ class GuPiaoModel():
             end = time.process_time()
             print('\rsteps:%d/%d, epochs:%d/%d, %0.4f S, loss:%0.4f, total_loss:%0.4f, epoch_loss:%0.4f' 
                 % (steps, steps_per_epoch, epoch, epochs, (end - start), loss, total_loss, epoch_loss))
+            """@nni.report_intermediate_result(epoch_loss)"""
             if auto_save:
                 self.save_model()
 
@@ -298,19 +307,27 @@ def main():
     input_num = 15
     # 预测数据维度
     output_num = 12
+    """@nni.variable(nni.choice(1, 2, 5, 10, 20, 50, 100), name=batch_size)"""
     batch_size = 20
+    """@nni.variable(nni.choice(5, 10, 20, 30, 50), name=history_size)"""
     history_size = 30
+    """@nni.variable(nni.choice(5, 10, 20), name=target_size)"""
     target_size = 5
     # 创建模型
     print('创建模型')
-    gupiao_model = GuPiaoModel(output_num)
+    gupiao_model = GuPiaoModel(output_num, is_load_model=False)
     # 加载数据
     print('加载数据')
     gupiao_loader = GuPiaoLoader()
-    df_sh = gupiao_loader.load_one('./data/gupiao_data/999999.SH.csv')
-    df_sz = gupiao_loader.load_one('./data/gupiao_data/399001.SZ.csv')
-    df_target = gupiao_loader.load_one('./data/gupiao_data/603106.SH.csv')
-    # print(df_target)
+    df_sh_all = gupiao_loader.load_one('./data/gupiao_data/999999.SH.csv')
+    df_sz_all = gupiao_loader.load_one('./data/gupiao_data/399001.SZ.csv')
+    df_target_all = gupiao_loader.load_one('./data/gupiao_data/603106.SH.csv')
+    print('df_target_all.shape', df_target_all.shape)
+    # 预测数量
+    predict_num = 20
+    df_sh = df_sh_all.iloc[:-predict_num,:]
+    df_sz = df_sz_all.iloc[:-predict_num,:]
+    df_target = df_target_all.iloc[:-predict_num,:]
     x, y = gupiao_loader.get_data_to_train(df_sh, df_sz, df_target, batch_size, history_size, target_size)
     print(x.shape,y.shape)
     x, y = gupiao_loader.get_data_to_train(df_sh, df_sz, df_target, batch_size, history_size, target_size)
@@ -318,23 +335,30 @@ def main():
     x, y = gupiao_loader.get_data_to_train(df_sh, df_sz, df_target, batch_size, history_size, target_size)
     print(x.shape,y.shape)
     print('训练前预测')
-    x, time_step = gupiao_loader.get_data_to_predict(df_sh, df_sz, df_target, history_size, 20)
+    x, time_step = gupiao_loader.get_data_to_predict(df_sh, df_sz, df_target, history_size, predict_num)
     print('x', x.shape, 'time_step', time_step.shape)
-    y = gupiao_model.predict_jit(x, time_step, 20)
+    y = gupiao_model.predict_jit(x, time_step, predict_num)
     print('y', y.shape)
     # 显示预测值
-    gupiao_loader.show_image(x[0,:,:], y[0,:,:])
+    _, y2 = gupiao_loader.get_data_to_train(df_sh_all, df_sz_all, df_target_all, 1, history_size, predict_num, len(df_target_all)-predict_num)
+    print('y2', y2.shape)
+    # gupiao_loader.show_image(x[0,:,:], y[0,:,:], y2[0,:,:])
     # 开始训练
     print('开始训练')
+    """@nni.variable(nni.choice(10), name=epochs)"""
+    epochs=20
     gupiao_model.fit_generator(
         gupiao_loader.data_generator(df_sh, df_sz, df_target, batch_size, history_size, target_size),
         steps_per_epoch=int(len(df_target)/2),
-        epochs=20, auto_save=True)
+        epochs=epochs, auto_save=False)
     # 预测
     print('预测')
-    y = gupiao_model.predict_jit(x, time_step, 20)
+    y = gupiao_model.predict_jit(x, time_step, predict_num)
     # 显示预测值
-    gupiao_loader.show_image(x[0,:,:], y[0,:,:])
+    # gupiao_loader.show_image(x[0,:,:], y[0,:,:], y2[0,:,:])
+    # 损失
+    loss = gupiao_model.loss_object(y_true=y2[0,:,:], y_pred=y[0,:,:])
+    """@nni.report_final_result(loss)"""
         
 
 if __name__ == '__main__':

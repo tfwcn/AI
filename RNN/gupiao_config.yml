@@ -1,0 +1,21 @@
+authorName: default
+experimentName: example_mnist
+trialConcurrency: 1
+maxExecDuration: 1d
+maxTrialNum: 20
+#choice: local, remote, pai
+trainingServicePlatform: local
+# searchSpacePath: search_space.json
+#choice: true, false
+useAnnotation: true
+tuner:
+  #choice: TPE, Random, Anneal, Evolution, BatchTuner, MetisTuner, GPTuner
+  #SMAC (SMAC should be installed through nnictl)
+  builtinTunerName: TPE
+  classArgs:
+    #choice: maximize, minimize
+    optimize_mode: minimize
+trial:
+  command: python RNN\gupiao_predict.py
+  codeDir: ..
+  gpuNum: 1

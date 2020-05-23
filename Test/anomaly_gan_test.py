@@ -112,11 +112,8 @@ class MyGanModel():
         self.loss_fun=tf.keras.losses.CategoricalCrossentropy()
         self.generator_optimizer=tf.keras.optimizers.RMSprop()
 
-    def fit(self, train_data, epochs, steps, validation_data=None):
+    def fit(self, train_data, epochs, steps, validation_data=None, steps_val=0):
         print('初始化fit')
-        tf.print('初始化fit')
-        # train_data = train_data.batch(batch_size)
-        tf.print('初始化train_data')
         for epoch_i in range(epochs):
             start = time.process_time()
             sum_loss = 0.0
@@ -125,12 +122,28 @@ class MyGanModel():
                 x, y = next(train_data)
                 loss = self.train_step(x)
                 sum_loss += loss
-                # tf.print('\repocn:', epoch_i+1, '/', epochs, ',step:', step_i+1, '/', len(train_data), ',loss:', loss, end='')
                 print('\repocn: %d/%d , step: %d/%d , loss: %.4f' % (epoch_i+1, epochs, step_i+1, steps, loss), end='')
+            sum_loss_val = 0
+            if validation_data is not None:
+                for _ in range(steps_val):
+                    x, y = next(validation_data)
+                    loss = self.validation_step(x)
+                    sum_loss_val += loss
             end = time.process_time()
-            print('\repocn: %d/%d , step: %d/%d , loss: %.4f , %0.4f S' % (epoch_i+1, epochs, step_i+1, steps, sum_loss, (end - start)))
-            # tf.print('\repocn:', epoch_i+1, '/', epochs, ',step:', step_i+1, '/', len(train_data), ',loss:', sum_loss)
+            print('\repocn: %d/%d , step: %d/%d , loss: %.4f , loss_val: %.4f , %0.4f S' % (epoch_i+1, epochs, step_i+1, steps, sum_loss, sum_loss_val, (end - start)))
+    
+    @tf.function
+    def validation_step(self, image):
+        # input = tf.expand_dims(image, axis=0)
+        input = image
+        x = input
 
+        loss = 0.0
+        x = self.encoder(x)
+        x = self.decoder(x)
+        loss = self.loss_fun(y_true=input,y_pred=x)
+
+        return loss
     
     @tf.function
     def train_step(self, image):
@@ -163,7 +176,7 @@ def data_generator(x, y, batch_size, shuffle=True):
         for x, y in data.shuffle(60000).repeat().batch(batch_size):
             yield x, y
     else:
-        for x, y in data.batch(batch_size):
+        for x, y in data.repeat().batch(batch_size):
             yield x, y
 
 def main():
@@ -197,10 +210,10 @@ def main():
 
     model = MyGanModel()
 
-    model.fit(data_generator(x_train, y_train, batch_size=10), epochs=20, steps=6000, validation_data=data_generator(x_test, y_test, batch_size=10))
+    model.fit(data_generator(x_train, y_train, batch_size=20), epochs=10, steps=6000, validation_data=data_generator(x_test, y_test, batch_size=10, shuffle=False), steps_val=10000)
 
     for i in range(10):
-        tmp_img = x_test[i]
+        tmp_img = x_train[i]
         print('tmp_img', tmp_img.shape)
         predict_img = model.predict(tmp_img)
         print('predict_img', predict_img.shape)

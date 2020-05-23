@@ -133,8 +133,8 @@ def getOneHotData(file_path, pre_point_name, area_name):
 #         .replace('下午', 'PM').replace('上午', 'AM'),
 #         '%d-%m-%y %I.%M.%S.%f %p').strftime('%Y/%m/%d %H:%M:%S'))
 
-# format1('E:\Labels\数据预测\数据导出(镇坪19111512-19112412)\动环监测数据.xml')
-# format2('E:\Labels\数据预测\数据导出(镇坪19111512-19112412)\红外数据.xml')
+format1('E:\Labels\数据预测\导出数据(镇坪19112412-19112912)\集中监控主机环境数据(包含综自).xml')
+format2('E:\Labels\数据预测\导出数据(镇坪19112412-19112912)\红外热成像数据.xml')
 
 # df1 = getOneHotData('./data/bdzdata2.csv', '#1主变201A T型线夹', '#1主变201A T型线夹')
 # print(df1)
@@ -142,44 +142,44 @@ def getOneHotData(file_path, pre_point_name, area_name):
 # print(df2)
 # df3 = getOneHotData('./data/bdzdata2.csv', '#1主变油枕刻度表', '#1主变油枕刻度表')
 # print(df3)
-df1 = getOneZongZhiData('./data/bdzdata1.csv', '1B主变高压侧A相电流')
-print(df1)
-df2 = getOneZongZhiData('./data/bdzdata1.csv', '211馈线电流')
-print(df2)
-df3 = getOneZongZhiData('./data/bdzdata1.csv', '211馈线功率因数')
-print(df3)
-df4 = getOneZongZhiData('./data/bdzdata1.csv', '211馈线无功')
-print(df4)
-df5 = getOneZongZhiData('./data/bdzdata1.csv', '211馈线有功')
-print(df5)
-df_merge = pd.merge(df1, df2, how='outer', on='CREATE_TIME', sort=False,
-                    suffixes=('', '_df2'))
-df_merge = pd.merge(df_merge, df3, how='outer', on='CREATE_TIME', sort=False,
-                    suffixes=('', '_df3'))
-df_merge = pd.merge(df_merge, df4, how='outer', on='CREATE_TIME', sort=False,
-                    suffixes=('', '_df4'))
-df_merge = pd.merge(df_merge, df5, how='outer', on='CREATE_TIME', sort=False,
-                    suffixes=('', '_df5'))
-# 排序
-df_merge = df_merge.sort_values(by="CREATE_TIME",ascending=True)
+# df1 = getOneZongZhiData('./data/bdzdata1.csv', '1B主变高压侧A相电流')
+# print(df1)
+# df2 = getOneZongZhiData('./data/bdzdata1.csv', '211馈线电流')
+# print(df2)
+# df3 = getOneZongZhiData('./data/bdzdata1.csv', '211馈线功率因数')
+# print(df3)
+# df4 = getOneZongZhiData('./data/bdzdata1.csv', '211馈线无功')
+# print(df4)
+# df5 = getOneZongZhiData('./data/bdzdata1.csv', '211馈线有功')
+# print(df5)
+# df_merge = pd.merge(df1, df2, how='outer', on='CREATE_TIME', sort=False,
+#                     suffixes=('', '_df2'))
+# df_merge = pd.merge(df_merge, df3, how='outer', on='CREATE_TIME', sort=False,
+#                     suffixes=('', '_df3'))
+# df_merge = pd.merge(df_merge, df4, how='outer', on='CREATE_TIME', sort=False,
+#                     suffixes=('', '_df4'))
+# df_merge = pd.merge(df_merge, df5, how='outer', on='CREATE_TIME', sort=False,
+#                     suffixes=('', '_df5'))
+# # 排序
+# df_merge = df_merge.sort_values(by="CREATE_TIME",ascending=True)
 
-# 增加列，作为索引
-col_name = df_merge.columns.tolist()
-col_name.insert(1, 'index')  # 默认值为NaN
-df_merge = df_merge.reindex(columns=col_name)
-# 用时间戳作为索引排序
-df_merge.loc[:, 'index'] = df_merge.apply(lambda x: (int(time.mktime(datetime.datetime.strptime(x['CREATE_TIME'],'%Y/%m/%d %H:%M:%S').timetuple()))), axis=1)
-df_merge = df_merge.sort_values(by="index",ascending=True)
-df_merge = df_merge.set_index('index')
-# 找最近值填充NaN
-df_merge = df_merge.interpolate(method='nearest', axis=0, limit_direction='both')
-# 去掉秒数
-df_merge.loc[:, 'CREATE_TIME'] = df_merge.apply(
-    lambda x: (datetime.datetime.strptime(x['CREATE_TIME'], '%Y/%m/%d %H:%M:%S')
-                .strftime('%Y/%m/%d %H:%M:00')), axis=1)
-# 去重
-df_merge = df_merge.drop_duplicates()
-# 去掉前后空值
-df_merge = df_merge.dropna()
-print(df_merge)
-df_merge.to_csv('./data/bdzdata_merge.csv')
+# # 增加列，作为索引
+# col_name = df_merge.columns.tolist()
+# col_name.insert(1, 'index')  # 默认值为NaN
+# df_merge = df_merge.reindex(columns=col_name)
+# # 用时间戳作为索引排序
+# df_merge.loc[:, 'index'] = df_merge.apply(lambda x: (int(time.mktime(datetime.datetime.strptime(x['CREATE_TIME'],'%Y/%m/%d %H:%M:%S').timetuple()))), axis=1)
+# df_merge = df_merge.sort_values(by="index",ascending=True)
+# df_merge = df_merge.set_index('index')
+# # 找最近值填充NaN
+# df_merge = df_merge.interpolate(method='nearest', axis=0, limit_direction='both')
+# # 去掉秒数
+# df_merge.loc[:, 'CREATE_TIME'] = df_merge.apply(
+#     lambda x: (datetime.datetime.strptime(x['CREATE_TIME'], '%Y/%m/%d %H:%M:%S')
+#                 .strftime('%Y/%m/%d %H:%M:00')), axis=1)
+# # 去重
+# df_merge = df_merge.drop_duplicates()
+# # 去掉前后空值
+# df_merge = df_merge.dropna()
+# print(df_merge)
+# df_merge.to_csv('./data/bdzdata_merge.csv')

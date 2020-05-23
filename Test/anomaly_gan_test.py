@@ -108,7 +108,8 @@ class MyGanModel():
         print('MyGamModel input_shape', input_shape)
         self.encoder = MyEncoderModel(20)
         self.decoder = MyDecoderModel(encoder_input_shape=input_shape)
-        self.loss_fun=tf.keras.losses.MeanSquaredError()
+        # self.loss_fun=tf.keras.losses.MeanSquaredError()
+        self.loss_fun=tf.keras.losses.CategoricalCrossentropy()
         self.generator_optimizer=tf.keras.optimizers.RMSprop()
 
     def fit(self, train_data, epochs, steps, validation_data=None):

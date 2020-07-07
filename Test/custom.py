@@ -69,7 +69,8 @@ class CustomModel(tf.keras.Model):
         x = self.flatten(x)
         x = self.fc1(x)
         x = self.dropout(x)
-        return self.fc2(x)
+        x = self.fc2(x)
+        return x
 
 
 class CustomCallback(tf.keras.callbacks.Callback):
